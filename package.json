@@ -1,0 +1,13 @@
+{
+  "name": "effect-cmd-sigint-repro",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@effect/platform": "0.92.0",
+    "@effect/platform-node": "0.98.0",
+    "effect": "3.18.0"
+  }
+}
