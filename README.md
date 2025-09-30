@@ -1,40 +1,50 @@
 # Effect Command SIGINT Reproduction
 
-Minimal reproduction showing that child processes spawned via Effect's `Command` API remain alive after the parent Effect program receives `SIGINT`.
+Minimal stand-alone proof that a process spawned via Effect's `Command` API remains alive after the parent program is interrupted (e.g. Ctrl+C).
 
-## Steps
+## Run the repro
 
-1. Install dependencies:
+```sh
+pnpm install
+pnpm start
+```
 
-   ```sh
-   pnpm install
-   ```
+Sample output:
 
-2. Start the wrapper:
+```
+> effect-cmd-sigint-repro@0.0.0 start
+> node index.mjs
 
-   ```sh
-   pnpm start
-   ```
+[child] listening on http://127.0.0.1:48787 pid=63128
+```
 
-   You should see the child log its PID and port:
+Now press `Ctrl+C`.
 
-   ```
-   [child] listening on http://127.0.0.1:48787 pid=12345
-   ```
+## Expected vs actual
 
-3. Press `Ctrl+C`.
-4. Verify the child is still running (the port is still bound):
+- **Expected:** When the wrapper receives SIGINT, it should tear down the spawned process group (the child server and its descendants) and exit with them.
+- **Actual:** The wrapper exits immediately, but the child remains running with `PPID=1` and keeps its TCP port open.
 
-   ```sh
-   lsof -nP -iTCP:48787 -sTCP:LISTEN
-   # or
-   ps -p <pid> -o pid,ppid,pgid,command
-   ```
+You can verify the leak with either command below (replace `63128` with the PID printed by the child):
 
-   The process remains with `PPID=1`, showing that the effect wrapper exited before killing the child process group.
+```sh
+# Check that the port is still bound:
+lsof -nP -iTCP:48787 -sTCP:LISTEN
 
-## Expected
-- The child should terminate when the wrapper receives `SIGINT`.
+# Inspect the child process – note PPID=1:
+ps -o pid,ppid,pgid,command -p 63128
+```
 
-## Actual
-- The wrapper exits immediately, leaving the detached child process running, mirroring what we observe in `mono examples run cf-chat`.
+Example after pressing Ctrl+C:
+
+```
+$ lsof -nP -iTCP:48787 -sTCP:LISTEN
+COMMAND   PID   USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
+node    63128 schickling   18u  IPv4  95336      0t0  TCP 127.0.0.1:48787 (LISTEN)
+
+$ ps -o pid,ppid,pgid,command -p 63128
+    PID    PPID    PGID COMMAND
+  63128       1   63128 node child.mjs
+```
+
+This mirrors what we see in larger applications (dev servers, CLIs, etc.): anything started via `Effect / @effect/platform` survives SIGINT because the process group is detached and never explicitly killed when the parent exits due to a signal.
