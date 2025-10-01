@@ -14,7 +14,7 @@ const cwd = dirname(fileURLToPath(import.meta.url))
 const envPort = process.env.REPRO_PORT ?? "48787"
 
 const makeCommand = () =>
-  Command.make("bash", "-lc", "node child.mjs").pipe(
+  Command.make("bash", "-lc", `setsid node child.mjs`).pipe(
     Command.workingDirectory(cwd),
     Command.stdin("inherit"),
     Command.stdout("inherit"),
