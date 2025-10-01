@@ -13,16 +13,19 @@ import {
 const cwd = dirname(fileURLToPath(import.meta.url))
 const envPort = process.env.REPRO_PORT ?? "48787"
 
-const command = Command.make("bash", "-lc", "node child.mjs").pipe(
-  Command.workingDirectory(cwd),
-  Command.stdin("inherit"),
-  Command.stdout("inherit"),
-  Command.stderr("inherit"),
-  Command.env([["REPRO_PORT", envPort]]),
-  Command.exitCode,
-)
+const makeCommand = () =>
+  Command.make("bash", "-lc", "node child.mjs").pipe(
+    Command.workingDirectory(cwd),
+    Command.stdin("inherit"),
+    Command.stdout("inherit"),
+    Command.stderr("inherit"),
+    Command.env([["REPRO_PORT", envPort]]),
+    Command.exitCode,
+  )
 
-const program = command.pipe(
+const program = Effect.gen(function* () {
+  return yield* makeCommand()
+}).pipe(
   Effect.provide(NodeCommandExecutor.layer),
   Effect.provide(NodeFileSystem.layer),
   Effect.provide(NodeContext.layer),
