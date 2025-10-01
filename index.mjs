@@ -1,7 +1,7 @@
 import { dirname } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { Effect, Layer } from "effect"
+import { Effect } from "effect"
 import * as Command from "@effect/platform/Command"
 import {
   NodeCommandExecutor,
@@ -22,6 +22,10 @@ const command = Command.make("bash", "-lc", "node child.mjs").pipe(
   Command.exitCode,
 )
 
-const layer = Layer.mergeAll(NodeContext.layer, NodeFileSystem.layer, NodeCommandExecutor.layer)
+const program = command.pipe(
+  Effect.provide(NodeCommandExecutor.layer),
+  Effect.provide(NodeFileSystem.layer),
+  Effect.provide(NodeContext.layer),
+)
 
-NodeRuntime.runMain(command.pipe(Effect.provide(layer)))
+NodeRuntime.runMain(program)
